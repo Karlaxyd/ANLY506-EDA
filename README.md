@@ -26,3 +26,4 @@ In this Final Project, there are five parts to be completed: Set up questions, D
 
 ### Data
 
+The `gapminder.csv` file located in the Data folder will be used as the dataset for my Final Project. The dataset contains the life, population and income information of different regions across the world from year 1800 to 2015. There are 6 variables: year, life, population, income, country, and region. And there are 41284 observations. There will be more work to do with this dataset, which will be provided in the Final Report.
