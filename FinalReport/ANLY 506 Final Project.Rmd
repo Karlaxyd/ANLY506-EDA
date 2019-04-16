@@ -1,0 +1,173 @@
+---
+title: "ANLY 506 Final Report"
+author: "Yingdan"
+date: "4/14/2019"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+library(readr)
+library(tidyverse)
+```
+
+## Introduction
+
+This is a Final Report for ANLY 506 course Final Project written in R markdown. The entier project source code can be found in [GitHub Repo](https://github.com/Karlaxyd/ANLY506-EDA/tree/master/FinalReport). The Final Project is to apply the [gapminder](https://raw.githubusercontent.com/birdsarah/pydata-nc/master/tutorial/assets/gapminder.csv) dataset, follow the epicycle analysis and perform a proper data analysis. This report consists of four main sections, which includes Questions Formulation, Data Description, Exploratory Data Analysis and Results and Observations.
+
+## Questions Formulation
+
+The dataset illustrates the chronological change of human welfare around the world from 1800 to 2015 with six variables described as following:
+
+Variable      | Meaning
+------------- | -------------
+Country       | Name of the country
+Year          | Year from 1800 to 2015 
+life          | Life expectancy at birth 
+population    | Number of population
+income        | Average income 
+region        | Region of the country 
+
+Based on the given data, I come up with following questions:
+
+1. How do life expectancy at birth, population and income level change over time for each region?
+2. Do they change in the same pattern?
+3. Do people with more income tend to have a longer life expectency?
+
+## Data Description
+
+The dataset is located in the `../Data` directory, now I can import it and briefly run some R command to view the summary of the dataset.
+```{r}
+# import the dataset gapminder.csv
+gapminder <- read_csv(file = file.path("../Data", "gapminder.csv"))
+
+# quick view the first several rows of dataset
+head(gapminder)
+
+# quick view the structure of the dataset
+str(gapminder)
+
+# display a summary of dataset
+summary(gapminder)
+```
+
+As you can see from the results running above, this global dataset contains demographic information of 197 countries during the year of 1800 to 2015 with life, population, income across 6 regions. There are 41284 observations in total and 6 variables.
+
+## Exploratory Data Analysis
+
+Firstly, after viewing the data, to answer my first question, the dataset needs to be adjusted a bit.
+Because we can not just compare gross income over time, here I divide gross income by population to get per capita income, and add it as a new column.
+
+```{r}
+# add new column pci1000
+gapminder$pci1000 <- gapminder$income/gapminder$population*1000
+
+# remove country column and add pci1000 column to form new dataset
+gapminder <- select(gapminder, region, Year, life, population, pci1000)
+```
+
+It is too complex to see changes for each country at the first, so I group the data by region to get an overview of each region by using `group_by`.
+
+```{r}
+# create a group_by parameter
+by_region <- group_by(gapminder, region, Year)
+
+# form new dataset with
+gapminder_by_region <- summarise(by_region, life = mean(life, na.rm = TRUE), popupation = mean(population, na.rm = TRUE), pci1000 = mean(pci1000, na.rm = TRUE))
+```
+
+#### Life Expectancy at Birth
+
+Then let's see the life expectancy at birth change over time for each region by using `ggplot` and `geom_line`.
+```{r}
+# using ggplot and geom_line to plot and connect observations by line
+ggplot(data = gapminder_by_region) +
+  geom_line(mapping = aes(x = Year, y = life, color = region), show.legend = FALSE) +
+  facet_wrap(~region, nrow = 2) + 
+  ggtitle("Plot 1. Life Expectancy over Years by Region")
+```
+
+It seems that they tend to have the same decline trend in between 1900 ~ 1950. Let's zoom in this period to take a close look, and put them in the same plot to see if they overlap by using `filter`.
+
+```{r}
+# using filter to narrow down the observations
+gapminder_by_region_zoom <- gapminder_by_region %>%
+  filter(Year >1900 & Year <1950)
+
+# using ggplot and geom_line to draw a zoomed line chart for life expectacy over years 1900 to 1950
+ggplot(data = gapminder_by_region_zoom) +
+  geom_line(mapping = aes(x = Year, y = life, color = region), size = 0.5) +
+  ggtitle("Plot 2. Life Expectancy over Years by Region (1900 - 1950)")
+```
+
+Yes, from the plot we can see that, there was a big life expectancy decline before 1920 all over the world. And also there was a second decline before 1950, but America and Middle East & North Africa area did not experience that much of decline.
+
+The two big decline was exactly at the time of World War I and World War II.
+
+So, there comes my assumption: did the world wars have the same effect on other variables of the data?
+
+#### Population
+
+For the polulation information, the data was colected every 10 years before 1950, so `NA` in the columns means no data. I just simply remove `NA` to draw histograms by using `na.rm = FALSE`.
+```{r}
+# draw histogram plot of population over year by using geom_col
+ggplot(data = gapminder_by_region, mapping = aes(x = Year, y = popupation, color = region)) +
+  geom_col(na.rm = TRUE, show.legend = FALSE) +
+  facet_wrap(~region, nrow = 2) +
+  ggtitle("Plot 3. Population over Years by Region")
+```
+
+The plots indicate that polulation is rising steadily for all the regions. Not sure if population was affected by the two world wars because the data was not colected every year during those two periods. We can not see any clue from what we have, though.
+
+Among the increase of regions, South Asia did have a rapid increase while Europe & Central Asia area only had a slightly increase.
+
+#### Per Capita Income
+
+For per capita income, I still choose coxcomb chart to show change over time, because it's not allowed in this assignment to make the same plot for differnt vairables.
+```{r}
+# draw coxcomb plot of pci1000 over year by using geom_col
+ggplot(data = gapminder_by_region, mapping = aes(x = Year, y = pci1000, color = region)) +
+  geom_col(na.rm = TRUE, show.legend = FALSE) +
+  facet_wrap(~region, nrow = 2) +
+  coord_polar() + 
+  ggtitle("Plot 4. Income over Years by Region")
+```
+
+This is a surprising result! Per capita income plots show totally different patterns of change from population and life expectancy. 
+
+PCI changes are affected multiple reasons, not only the world wars or populations.
+Now I've seen the trends in life, population, and income. Obviously they change in different patterns. 
+
+However, I still want to explore some potential relationship between the variables. 
+So here is the implementation to my third question.
+
+```{r}
+# reform dataset with only year of 2015
+gapminder_2015 <- gapminder[gapminder$Year==2015,]
+
+# group dataset by region
+by_region_2015 <- group_by(gapminder_2015, region, Year)
+
+# draw scatter plot of pci1000 over life expactancy by using geom_point
+ggplot(data = by_region_2015, mapping = aes(x = life, y = pci1000, color = region)) +
+  geom_point(show.legend = FALSE) +
+  facet_wrap(~region, nrow=2) +
+  ggtitle("Plot 5. Income over Life Expectancy by Region")
+```
+
+This plot shows the relationship between life expectancy and pci1000 for each region respectively in the year 2015. From the plot above, we can see that higher points tend to distribute on the right side of the plots, which menas there is a tendency that people with more income have longer life expectency.
+
+## Results and Findings
+
+Based on the Exploratory Data Analysis (EDA) and figures described above, I'd like to summarize the answers to the questions I formulated at the beginning as following:
+
+* Based on Plot 1, Plot 2 and Plot 3, it is obvious to say that as time goes by, the population, life expectancy at birth and people's income are gradually increased at varying level for all regions in the world. 
+* Polulation is rising steadily for all the regions. Among the increase of regions, South Asia did have a rapid increase while Europe & Central Asia area only had a slightly increase. 
+* Similar trend happens to life expectancy. Although there is a dramatically drop on during a short period between year 1915 to 1920 and 1935 to 1945, which is probably cased by the impact of World War I and World War II.
+* In Plot 4, per capita income plots show totally different patterns of change from population and life expectancy. PCI changes are probably affected by multiple reasons, of which may be beyond the scope of this project.
+* Plot 5 illustrates that there is a tendency that people with more income have longer life expectency.
+
+In conclusion, in this project, I have applied many approches to gain insights from this gapminder dataset, which maximized my understanding to the concepts and fully consolidated my knowledge.
